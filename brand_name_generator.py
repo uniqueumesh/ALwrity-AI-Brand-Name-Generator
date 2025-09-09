@@ -146,10 +146,44 @@ def main():
                     st.session_state['brand_names'] = brand_names
                 else:
                     st.error("💥 **Failed to generate brand names. Please try again!**")
-            st.markdown(st.session_state['brand_names'])
+            # Parse and display names in a better format
+            names_list = [name.strip().lstrip('0123456789. ') for name in st.session_state['brand_names'].split('\n') if name.strip()]
+            
+            # Display names in a clean, numbered format
+            st.markdown('<h3 style="margin-top:2rem; color:#1976D2;">🎯 Generated Brand Names</h3>', unsafe_allow_html=True)
+            
+            for i, name in enumerate(names_list, 1):
+                st.markdown(f"""
+                <div style="
+                    background-color: #f8f9fa;
+                    border-left: 4px solid #1565C0;
+                    padding: 15px;
+                    margin: 10px 0;
+                    border-radius: 5px;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                ">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <div>
+                            <span style="
+                                background-color: #1565C0;
+                                color: white;
+                                padding: 5px 10px;
+                                border-radius: 15px;
+                                font-size: 14px;
+                                font-weight: bold;
+                                margin-right: 15px;
+                            ">{i}</span>
+                            <span style="
+                                font-size: 18px;
+                                font-weight: 600;
+                                color: #333;
+                            ">{name}</span>
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
             
             # Excel export for evaluation
-            names_list = [name.strip().lstrip('0123456789. ') for name in st.session_state['brand_names'].split('\n') if name.strip()]
             df = pd.DataFrame({'Brand Name': names_list})
             excel_buffer = io.BytesIO()
             df.to_excel(excel_buffer, index=False, engine='openpyxl')
