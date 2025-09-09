@@ -13,51 +13,74 @@ import requests
 import socket
 
 
+def is_likely_taken_business_name(name):
+    """Check if name is likely taken by existing business."""
+    # Common business name patterns that are likely taken
+    common_patterns = [
+        'tech', 'digital', 'smart', 'pro', 'max', 'ultra', 'mega', 'super',
+        'quick', 'fast', 'easy', 'simple', 'best', 'top', 'prime', 'elite',
+        'global', 'world', 'universe', 'planet', 'space', 'future', 'next',
+        'new', 'modern', 'advanced', 'innovative', 'creative', 'dynamic',
+        'solutions', 'systems', 'services', 'group', 'corp', 'inc', 'llc',
+        'labs', 'works', 'studio', 'agency', 'consulting', 'enterprises',
+        'mind', 'write', 'gen', 'smith', 'verb', 'intelli', 'scribble'
+    ]
+    
+    # Check if name contains common business terms
+    name_lower = name.lower()
+    for pattern in common_patterns:
+        if pattern in name_lower:
+            return True
+    
+    # Check for common AI/Tech terms that are likely taken
+    ai_tech_terms = [
+        'ai', 'ml', 'data', 'cloud', 'app', 'web', 'mobile', 'software',
+        'platform', 'api', 'sdk', 'dev', 'code', 'tech', 'digital',
+        'intelli', 'smart', 'auto', 'robo', 'cyber', 'neo', 'quantum'
+    ]
+    
+    for term in ai_tech_terms:
+        if term in name_lower:
+            return True
+    
+    return False
+
+
 def check_domain_availability(domain_name):
-    """Check if a domain is available by attempting to resolve it."""
+    """Enhanced domain checking with multiple validation layers."""
     try:
-        # Clean the domain name - remove spaces, special chars, and ensure .com
+        # Clean the domain name - remove spaces, special chars
         clean_name = domain_name.lower().replace(' ', '').replace('-', '').replace('_', '')
         # Remove common business suffixes
         clean_name = clean_name.replace('inc', '').replace('llc', '').replace('corp', '').replace('ltd', '')
-        domain = clean_name + '.com'
         
-        # Try to resolve the domain
-        socket.gethostbyname(domain)
-        return False  # Domain exists (taken)
-    except socket.gaierror:
-        return True   # Domain is available
-    except Exception:
-        return True   # Assume available if check fails
-
-
-def check_name_uniqueness(name):
-    """Check if a brand name appears to be unique using basic validation."""
-    try:
-        # Clean the name for search
-        search_name = name.replace(' ', '+')
+        # Check multiple domain extensions
+        extensions = ['.com', '.net', '.org', '.io', '.co']
+        for ext in extensions:
+            try:
+                test_domain = clean_name + ext
+                socket.gethostbyname(test_domain)
+                return False  # Domain exists (taken)
+            except socket.gaierror:
+                continue  # This extension is available, check next
         
-        # Simple Google search check (basic implementation)
-        # Note: This is a simplified check - in production, you'd use proper APIs
-        domain_available = check_domain_availability(name)
-        
-        if domain_available:
-            return "✅ Likely Unique"
-        else:
-            return "⚠️ May Exist"
+        # Additional check: Look for common business name patterns
+        if is_likely_taken_business_name(clean_name):
+            return False
             
+        return True   # Domain appears to be available
     except Exception:
-        return "❓ Unknown"
+        return False  # Conservative: assume taken if check fails
 
 
 def generate_names_with_domain_validation(input_business_type, input_keywords, input_brand_personality, input_name_style, input_name_length, input_language, user_gemini_api_key=None, num_names=8, input_target_market=None):
-    """Generate brand names with domain validation loop."""
-    max_attempts = 5  # Maximum attempts to get unique names
+    """Generate brand names with enhanced domain validation loop."""
+    max_attempts = 3  # Reduced attempts for better performance
     target_names = num_names
     unique_names = []
     attempt = 0
     
-    st.info(f"🔍 Generating names with domain validation... (Target: {target_names} unique names)")
+    st.info(f"🔍 Generating names with enhanced domain validation... (Target: {target_names} unique names)")
     
     while len(unique_names) < target_names and attempt < max_attempts:
         attempt += 1
@@ -77,7 +100,7 @@ def generate_names_with_domain_validation(input_business_type, input_keywords, i
         # Parse generated names
         names_list = [name.strip().lstrip('0123456789. ') for name in brand_names.split('\n') if name.strip()]
         
-        # Check each name for domain availability
+        # Check each name for domain availability with enhanced validation
         for name in names_list:
             if name and name not in unique_names:  # Avoid duplicates
                 domain_available = check_domain_availability(name)
@@ -86,6 +109,8 @@ def generate_names_with_domain_validation(input_business_type, input_keywords, i
                     st.success(f"✅ Found unique name: {name}")
                     if len(unique_names) >= target_names:
                         break
+                else:
+                    st.warning(f"⚠️ Name likely taken: {name}")
         
         # Show progress
         st.write(f"Found {len(unique_names)} unique names so far...")
@@ -220,14 +245,14 @@ def main():
 
     # Add option for number of names
     st.markdown('<h3 style="margin-top:2rem;">How many brand names do you want to generate?</h3>', unsafe_allow_html=True)
-    num_names = st.slider('Number of brand name suggestions', min_value=1, max_value=15, value=8, help="Choose how many brand names to generate (1-15).")
+    num_names = st.slider('Number of brand name suggestions', min_value=1, max_value=10, value=5, help="Choose how many brand names to generate (1-10).")
 
     # Generate Brand Names button
     if st.button('**Generate Brand Names**'):
         if not input_business_type and not input_keywords:
             st.error('**🫣 Provide Inputs to generate Brand Names. Business type OR keywords are required!**')
         else:
-            # Use domain validation loop
+            # Use enhanced domain validation loop
             unique_names = generate_names_with_domain_validation(
                 input_business_type, input_keywords, input_brand_personality, 
                 input_name_style, input_name_length, input_language, 
@@ -237,16 +262,11 @@ def main():
             if unique_names:
                 # Store unique names in session state
                 st.session_state['unique_names'] = unique_names
-            else:
-                st.error("💥 **Failed to generate unique brand names. Please try again!**")
-            # Display unique names
-            if 'unique_names' in st.session_state and st.session_state['unique_names']:
-                names_list = st.session_state['unique_names']
                 
-                # Display names in a clean, numbered format
+                # Display unique names
                 st.markdown('<h3 style="margin-top:2rem; color:#1976D2;">🎯 Unique Brand Names (Domain Available)</h3>', unsafe_allow_html=True)
-            
-                for i, name in enumerate(names_list, 1):
+                
+                for i, name in enumerate(unique_names, 1):
                     st.markdown(f"""
                     <div style="
                         background-color: #f8f9fa;
@@ -286,9 +306,9 @@ def main():
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
-            
+                
                 # Excel export for evaluation
-                df = pd.DataFrame({'Brand Name': names_list})
+                df = pd.DataFrame({'Brand Name': unique_names})
                 excel_buffer = io.BytesIO()
                 df.to_excel(excel_buffer, index=False, engine='openpyxl')
                 excel_buffer.seek(0)
@@ -298,15 +318,17 @@ def main():
                     file_name="unique_brand_names.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
+            else:
+                st.error("💥 **Failed to generate unique brand names. Please try again!**")
 
 
 # Function to generate brand names
 def generate_brand_names(input_business_type, input_keywords, input_brand_personality, input_name_style, input_name_length, input_language, user_gemini_api_key=None, num_names=8, input_target_market=None):
     """ Function to call upon LLM to get the work done. """
     
-    # Refined prompt for brand name generation
+    # Enhanced prompt for unique brand name generation
     brand_guidelines = f"""
-Generate {num_names} unique and creative brand names for the following business.
+Generate {num_names} COMPLETELY UNIQUE and never-before-seen brand names for the following business.
 
 Business Requirements:
 - Business Type: {input_business_type}
@@ -317,21 +339,46 @@ Business Requirements:
 - Language: {input_language}
 - Target Market: {input_target_market}
 
-Rules for Brand Name Generation:
-- Each name must be unique and memorable
-- Names should be easy to pronounce and spell
-- Avoid generic or overused terms
-- Consider trademark availability (avoid obvious conflicts)
-- Make names brandable and distinctive
-- If target market is specified, tailor names accordingly
-- Match the requested name style and length preferences
-- Write in this language: {input_language}
-- Ensure names are culturally appropriate
+CRITICAL UNIQUENESS REQUIREMENTS:
+- Create names that have NEVER been used by any existing brand
+- Avoid ALL common industry terms, generic words, and overused patterns
+- Do NOT use names that sound similar to existing major brands
+- Generate truly original combinations that don't exist anywhere
+- Create innovative word combinations and creative twists
+- Use abstract concepts, made-up words, and unique linguistic combinations
+
+CREATIVITY AND INNOVATION RULES:
+- Use portmanteau techniques (combining words creatively)
+- Incorporate abstract concepts and emotional elements
+- Create made-up words that sound natural and brandable
+- Use less common languages, roots, and linguistic elements
+- Apply creative spelling variations and unique pronunciations
+- Combine unexpected word pairs for memorable results
+
+INDUSTRY-SPECIFIC UNIQUENESS RULES:
+- AVOID common suffixes: -ly, -ify, -tech, -hub, -lab, -works, -solutions
+- AVOID generic prefixes: new-, pro-, smart-, digital-, eco-
+- AVOID overused industry terms and clichéd combinations
+- Create industry-specific creative alternatives
+- Use unconventional approaches for the business type
+
+QUALITY AND BRANDABILITY REQUIREMENTS:
+- Names must be easy to pronounce and spell
+- Ensure cultural appropriateness for {input_language}
 - Make names sound professional and trustworthy
 - Consider domain name availability potential
-- Avoid names that are too similar to existing major brands
+- Match the requested name style: {input_name_style}
+- Match the requested name length: {input_name_length}
+- Tailor to target market: {input_target_market}
 
-Generate {num_names} different brand name options. List only the names, one per line, without numbers or explanations.
+GENERATION INSTRUCTIONS:
+- Think creatively and outside conventional naming patterns
+- Use divergent thinking to create unexpected combinations
+- Focus on memorability and distinctiveness
+- Ensure each name is completely different from the others
+- Create names that stand out in the marketplace
+
+Generate {num_names} completely unique, innovative brand name options. List only the names, one per line, without numbers or explanations.
 """
 
     brand_names = gemini_text_response(brand_guidelines, user_gemini_api_key)
