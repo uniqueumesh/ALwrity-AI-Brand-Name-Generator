@@ -1,0 +1,42 @@
+---
+globs: *.py
+description: AI prompting best practices and guidelines for brand name generation
+---
+
+# AI Prompting Guidelines
+
+## Prompt Structure
+- Use clear, specific instructions with emphasis on uniqueness
+- Include business requirements and constraints
+- Add creativity and innovation rules
+- Specify industry-specific guidelines
+
+## Uniqueness Requirements
+- Emphasize "NEVER been used by any existing brand"
+- Avoid common industry terms and overused patterns
+- Include explicit instructions for creative combinations
+- Specify avoidance of generic suffixes (-ly, -ify, -tech, -hub, -lab)
+
+## Creativity Instructions
+- Use portmanteau techniques for word combinations
+- Incorporate abstract concepts and emotional elements
+- Create made-up words that sound natural
+- Apply creative spelling variations
+
+## Quality Requirements
+- Ensure names are easy to pronounce and spell
+- Maintain cultural appropriateness
+- Keep names professional and trustworthy
+- Consider domain name availability potential
+
+## Generation Parameters
+- Use temperature 0.7-0.9 for balanced creativity
+- Set top_p 0.3-0.4 for focused generation
+- Use top_k 1 for consistent results
+- Set max_output_tokens 1024 for sufficient length
+
+## Error Handling
+- Implement retry logic with exponential backoff
+- Handle rate limit errors gracefully
+- Provide user-friendly error messages
+- Cache successful responses in session state

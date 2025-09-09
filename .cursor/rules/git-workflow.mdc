@@ -1,0 +1,42 @@
+---
+description: Git workflow and version control guidelines
+---
+
+# Git Workflow Guidelines
+
+## Commit Messages
+- Use descriptive commit messages
+- Include enhancement number when applicable
+- Format: "Enhancement X: Brief description of changes"
+- Example: "Enhancement 1: Improve name display format with numbered cards"
+
+## Branch Strategy
+- Work on main branch for small enhancements
+- Create feature branches for major changes
+- Test thoroughly before pushing
+- Keep commits atomic and focused
+
+## File Organization
+- Keep planning documents separate from code
+- Don't commit temporary or test files
+- Maintain clean project structure
+- Document changes in commit messages
+
+## Enhancement Tracking
+- Commit after each successful enhancement
+- Push changes regularly to maintain backup
+- Tag major releases if needed
+- Keep enhancement plan documents updated
+
+## Code Review
+- Test changes locally before committing
+- Verify functionality works as expected
+- Check for linting errors
+- Ensure UI improvements are visible
+- Validate AI integration still works
+
+## Documentation
+- Update README.md for significant changes
+- Keep enhancement plans current
+- Document any new dependencies
+- Maintain clear project structure

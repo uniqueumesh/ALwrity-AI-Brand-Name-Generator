@@ -1,0 +1,36 @@
+---
+globs: *.py
+description: Streamlit development guidelines and best practices
+---
+
+# Streamlit Development Guidelines
+
+## Code Style
+- Use `st.set_page_config()` for page configuration
+- Hide Streamlit default elements (header, footer, menu) with CSS
+- Use `st.expander()` for collapsible sections
+- Implement proper error handling with `st.error()` and `st.warning()`
+
+## UI Components
+- Use `st.columns()` for layout organization
+- Implement `st.session_state` for data persistence
+- Use `st.spinner()` for loading states
+- Add `st.download_button()` for file exports
+
+## Styling Guidelines
+- Maintain blue color scheme: #1565C0 (primary), #90CAF9 (accent)
+- Use custom CSS in `st.markdown()` with `unsafe_allow_html=True`
+- Implement consistent button styling with shadows and hover effects
+- Use card-based layouts for better visual hierarchy
+
+## AI Integration
+- Use `@retry` decorator for API reliability
+- Implement proper error handling for rate limits
+- Store API responses in session state for caching
+- Use `st.spinner()` during AI generation
+
+## File Structure
+- Keep main app logic in `main()` function
+- Separate AI functions from UI code
+- Use descriptive function names and docstrings
+- Implement proper input validation

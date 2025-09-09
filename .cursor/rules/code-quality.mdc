@@ -1,0 +1,48 @@
+---
+globs: *.py
+description: Code quality standards and best practices
+---
+
+# Code Quality Standards
+
+## Python Best Practices
+- Use descriptive function and variable names
+- Add docstrings for all functions
+- Implement proper error handling with try-catch blocks
+- Use type hints where appropriate
+- Follow PEP 8 style guidelines
+
+## Streamlit Specific
+- Use `st.session_state` for data persistence
+- Implement proper loading states with `st.spinner()`
+- Add user feedback with `st.success()`, `st.error()`, `st.warning()`
+- Use `st.expander()` for optional sections
+- Implement proper form validation
+
+## Error Handling
+- Use `@retry` decorator for API calls
+- Handle rate limit errors gracefully
+- Provide meaningful error messages to users
+- Log errors appropriately for debugging
+- Implement fallback mechanisms
+
+## Performance
+- Cache API responses in session state
+- Use efficient data structures
+- Minimize API calls with proper caching
+- Implement loading indicators for long operations
+- Optimize UI rendering with proper state management
+
+## Security
+- Validate all user inputs
+- Sanitize data before processing
+- Use environment variables for API keys
+- Implement proper API key handling
+- Avoid exposing sensitive information
+
+## Testing
+- Test with various input combinations
+- Verify error handling scenarios
+- Test export functionality
+- Validate UI responsiveness
+- Check API integration reliability

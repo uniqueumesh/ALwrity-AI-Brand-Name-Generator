@@ -1,0 +1,34 @@
+---
+description: Enhancement priorities and implementation guidelines
+---
+
+# Enhancement Priorities
+
+## High Priority (Quick Wins)
+1. **Copy Individual Names Feature** - Add copy buttons for each generated name
+2. **Input Validation and Error Handling** - Improve user experience with better validation
+3. **Generation Parameter Optimization** - Increase AI creativity (temperature 0.9)
+
+## Medium Priority
+4. **Name Rating/Scoring System** - Allow users to rate generated names
+5. **Save Favorites Functionality** - Let users save preferred names
+6. **Enhanced Export Options** - Add CSV and JSON export formats
+
+## Low Priority (Skip for now)
+7. **Domain Availability Check** - Complex API integration
+8. **Performance Optimizations** - Not needed for current scale
+9. **Mobile Responsiveness** - Current UI works on mobile
+10. **Advanced AI Features** - Overkill for current needs
+
+## Implementation Guidelines
+- Focus on user experience improvements first
+- Test each enhancement individually before moving to next
+- Commit changes after each successful implementation
+- Prioritize simple solutions over complex ones
+- Avoid over-engineering - keep it practical
+
+## Uniqueness Improvements
+- Enhanced AI prompting (✅ Completed)
+- Consider basic validation (Google search check)
+- Improve input guidance with better examples
+- Skip complex uniqueness scoring systems
