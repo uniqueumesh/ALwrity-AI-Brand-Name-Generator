@@ -13,116 +13,289 @@ import requests
 import socket
 
 
+def reset_socket_timeout():
+    """Reset socket timeout to default to prevent hanging."""
+    try:
+        socket.setdefaulttimeout(None)
+    except:
+        pass
+
+
 def is_likely_taken_business_name(name):
-    """Check if name is likely taken by existing business."""
-    # Common business name patterns that are likely taken
+    """Enhanced business name pattern detection with conservative approach."""
+    if not name or len(name.strip()) < 2:
+        return True  # Conservative: reject very short names
+    
+    name_lower = name.lower().strip()
+    
+    # Enhanced common business name patterns (expanded list)
     common_patterns = [
+        # Generic business words
         'tech', 'digital', 'smart', 'pro', 'max', 'ultra', 'mega', 'super',
         'quick', 'fast', 'easy', 'simple', 'best', 'top', 'prime', 'elite',
-        'global', 'world', 'universe', 'planet', 'space', 'future', 'next',
-        'new', 'modern', 'advanced', 'innovative', 'creative', 'dynamic',
+        'premium', 'gold', 'silver', 'platinum', 'diamond', 'crystal',
+        # Scale indicators
+        'global', 'world', 'universe', 'planet', 'space', 'cosmic', 'galaxy',
+        'international', 'worldwide', 'universal', 'infinite', 'eternal',
+        # Time references
+        'future', 'next', 'new', 'modern', 'advanced', 'cutting', 'edge',
+        'innovative', 'creative', 'dynamic', 'revolutionary', 'breakthrough',
+        # Business types
         'solutions', 'systems', 'services', 'group', 'corp', 'inc', 'llc',
         'labs', 'works', 'studio', 'agency', 'consulting', 'enterprises',
-        'mind', 'write', 'gen', 'smith', 'verb', 'intelli', 'scribble'
+        'ventures', 'holdings', 'industries', 'technologies', 'innovations',
+        # Creative terms
+        'creative', 'design', 'art', 'craft', 'forge', 'foundry', 'mill',
+        'factory', 'workshop', 'atelier', 'boutique', 'gallery', 'studio',
+        # Common problematic terms
+        'mind', 'write', 'gen', 'smith', 'verb', 'intelli', 'scribble',
+        'word', 'text', 'content', 'copy', 'script', 'draft', 'edit',
+        'grammar', 'language', 'linguistic', 'vocabulary', 'dictionary'
     ]
     
-    # Check if name contains common business terms
-    name_lower = name.lower()
+    # Check for exact matches and partial matches
     for pattern in common_patterns:
         if pattern in name_lower:
             return True
     
-    # Check for common AI/Tech terms that are likely taken
+    # Enhanced AI/Tech terms detection
     ai_tech_terms = [
+        # Core technology terms
         'ai', 'ml', 'data', 'cloud', 'app', 'web', 'mobile', 'software',
         'platform', 'api', 'sdk', 'dev', 'code', 'tech', 'digital',
-        'intelli', 'smart', 'auto', 'robo', 'cyber', 'neo', 'quantum'
+        # Innovation terms
+        'intelli', 'smart', 'auto', 'robo', 'cyber', 'neo', 'quantum',
+        'blockchain', 'crypto', 'fintech', 'edtech', 'healthtech',
+        # Development terms
+        'programming', 'coding', 'development', 'engineering', 'architecture',
+        'framework', 'library', 'toolkit', 'suite', 'package', 'module',
+        # Modern concepts
+        'virtual', 'augmented', 'mixed', 'reality', 'metaverse', 'nft',
+        'machine', 'learning', 'deep', 'neural', 'algorithm', 'model'
     ]
     
     for term in ai_tech_terms:
         if term in name_lower:
             return True
     
+    # Check for common business name structures
+    # Names ending with common business suffixes
+    business_suffixes = ['corp', 'inc', 'llc', 'ltd', 'co', 'group', 'systems', 'solutions']
+    for suffix in business_suffixes:
+        if name_lower.endswith(suffix):
+            return True
+    
+    # Names starting with common business prefixes
+    business_prefixes = ['new', 'pro', 'smart', 'digital', 'global', 'world', 'future']
+    for prefix in business_prefixes:
+        if name_lower.startswith(prefix):
+            return True
+    
+    # Check for overly generic combinations
+    generic_combinations = [
+        'new tech', 'pro solutions', 'smart systems', 'digital services',
+        'global tech', 'world solutions', 'future systems', 'next generation'
+    ]
+    
+    for combo in generic_combinations:
+        if combo in name_lower:
+            return True
+    
     return False
 
 
 def check_domain_availability(domain_name):
-    """Enhanced domain checking with multiple validation layers."""
+    """Enhanced domain checking with conservative validation and improved error handling."""
+    if not domain_name or not domain_name.strip():
+        return False  # Conservative: reject empty names
+    
     try:
-        # Clean the domain name - remove spaces, special chars
-        clean_name = domain_name.lower().replace(' ', '').replace('-', '').replace('_', '')
-        # Remove common business suffixes
-        clean_name = clean_name.replace('inc', '').replace('llc', '').replace('corp', '').replace('ltd', '')
+        # Enhanced cleaning of the domain name
+        clean_name = domain_name.lower().strip()
+        # Remove spaces, special chars, and common separators
+        clean_name = clean_name.replace(' ', '').replace('-', '').replace('_', '').replace('.', '')
+        # Remove common business suffixes more aggressively
+        business_suffixes = ['inc', 'llc', 'corp', 'ltd', 'co', 'group', 'systems', 'solutions', 'tech', 'digital']
+        for suffix in business_suffixes:
+            if clean_name.endswith(suffix):
+                clean_name = clean_name[:-len(suffix)]
         
-        # Check multiple domain extensions
-        extensions = ['.com', '.net', '.org', '.io', '.co']
+        # Validate cleaned name
+        if len(clean_name) < 2:
+            return False  # Conservative: reject very short names
+        
+        # Check for invalid characters
+        if not clean_name.isalnum():
+            return False  # Conservative: reject names with special characters
+        
+        # Step 1: Enhanced domain extension checking with timeout
+        extensions = ['.com', '.net', '.org', '.io', '.co', '.biz', '.info']
+        domain_taken_count = 0
+        
         for ext in extensions:
             try:
                 test_domain = clean_name + ext
+                # Add timeout to prevent hanging
+                socket.setdefaulttimeout(3)  # 3 second timeout
                 socket.gethostbyname(test_domain)
-                return False  # Domain exists (taken)
+                domain_taken_count += 1
+                # If any major extension is taken, consider it taken
+                if ext in ['.com', '.net', '.org']:
+                    return False
             except socket.gaierror:
-                continue  # This extension is available, check next
+                continue  # This extension is available
+            except socket.timeout:
+                # Conservative: if timeout, assume taken
+                return False
+            except Exception:
+                # Conservative: if any error, assume taken
+                return False
         
-        # Additional check: Look for common business name patterns
+        # Step 2: Enhanced business pattern check
         if is_likely_taken_business_name(clean_name):
             return False
-            
-        return True   # Domain appears to be available
-    except Exception:
-        return False  # Conservative: assume taken if check fails
+        
+        # Step 3: Additional conservative checks
+        # Check for common dictionary words that are likely taken
+        common_words = [
+            'apple', 'google', 'microsoft', 'amazon', 'facebook', 'twitter',
+            'linkedin', 'instagram', 'youtube', 'netflix', 'spotify', 'uber',
+            'airbnb', 'tesla', 'spacex', 'openai', 'anthropic', 'stripe',
+            'paypal', 'square', 'shopify', 'salesforce', 'oracle', 'ibm'
+        ]
+        
+        if clean_name in common_words:
+            return False
+        
+        # Step 4: Check for suspicious patterns
+        # Names that are too generic or common
+        if len(clean_name) <= 4 and clean_name.isalpha():
+            return False  # Conservative: reject very short generic names
+        
+        # Names with repeated characters (likely taken)
+        if len(set(clean_name)) < len(clean_name) * 0.6:
+            return False  # Conservative: reject names with too many repeated chars
+        
+        # Step 5: Final conservative decision
+        # If multiple extensions are taken, be more conservative
+        if domain_taken_count >= 2:
+            return False
+        
+        # Only return True if we're confident it's available
+        reset_socket_timeout()  # Reset timeout
+        return True
+        
+    except Exception as e:
+        # Conservative: assume taken if any error occurs
+        reset_socket_timeout()  # Reset timeout
+        return False
 
 
 def generate_names_with_domain_validation(input_business_type, input_keywords, input_brand_personality, input_name_style, input_name_length, input_language, user_gemini_api_key=None, num_names=8, input_target_market=None):
-    """Generate brand names with enhanced domain validation loop."""
-    max_attempts = 3  # Reduced attempts for better performance
+    """Generate brand names with enhanced domain validation loop and improved error handling."""
+    max_attempts = 3  # Optimized for performance
     target_names = num_names
     unique_names = []
     attempt = 0
+    total_checked = 0
+    total_rejected = 0
     
-    st.info(f"🔍 Generating names with enhanced domain validation... (Target: {target_names} unique names)")
+    # Enhanced progress tracking
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+    
+    st.info(f"🔍 **Enhanced Validation Mode:** Generating names with conservative domain checking...")
+    st.info(f"**Target:** {target_names} unique names | **Max Attempts:** {max_attempts}")
     
     while len(unique_names) < target_names and attempt < max_attempts:
         attempt += 1
-        st.write(f"**Attempt {attempt}:** Generating names...")
+        status_text.text(f"🔄 **Attempt {attempt}/{max_attempts}:** Generating and validating names...")
         
-        # Generate names using AI
-        brand_names = generate_brand_names(
-            input_business_type, input_keywords, input_brand_personality, 
-            input_name_style, input_name_length, input_language, 
-            user_gemini_api_key, num_names, input_target_market
-        )
-        
-        if not brand_names:
-            st.error("Failed to generate names. Please try again.")
-            return None
-        
-        # Parse generated names
-        names_list = [name.strip().lstrip('0123456789. ') for name in brand_names.split('\n') if name.strip()]
-        
-        # Check each name for domain availability with enhanced validation
-        for name in names_list:
-            if name and name not in unique_names:  # Avoid duplicates
-                domain_available = check_domain_availability(name)
-                if domain_available:
-                    unique_names.append(name)
-                    st.success(f"✅ Found unique name: {name}")
-                    if len(unique_names) >= target_names:
-                        break
-                else:
-                    st.warning(f"⚠️ Name likely taken: {name}")
-        
-        # Show progress
-        st.write(f"Found {len(unique_names)} unique names so far...")
-        
-        if len(unique_names) < target_names and attempt < max_attempts:
-            st.write("🔄 Generating more names...")
+        try:
+            # Generate names using AI with error handling
+            brand_names = generate_brand_names(
+                input_business_type, input_keywords, input_brand_personality, 
+                input_name_style, input_name_length, input_language, 
+                user_gemini_api_key, num_names, input_target_market
+            )
+            
+            if not brand_names:
+                st.error("❌ **AI Generation Failed:** Please check your API key and try again.")
+                return None
+            
+            # Parse generated names with enhanced cleaning
+            names_list = []
+            for name in brand_names.split('\n'):
+                cleaned_name = name.strip().lstrip('0123456789. -•*')
+                if cleaned_name and len(cleaned_name) > 1:
+                    names_list.append(cleaned_name)
+            
+            if not names_list:
+                st.warning("⚠️ **No Valid Names Generated:** Try different inputs.")
+                continue
+            
+            # Enhanced validation loop with detailed feedback
+            for name in names_list:
+                if name and name not in unique_names:  # Avoid duplicates
+                    total_checked += 1
+                    
+                    # Enhanced domain availability check
+                    try:
+                        domain_available = check_domain_availability(name)
+                        
+                        if domain_available:
+                            unique_names.append(name)
+                            st.success(f"✅ **Unique Found:** {name}")
+                            if len(unique_names) >= target_names:
+                                break
+                        else:
+                            total_rejected += 1
+                            st.warning(f"⚠️ **Rejected:** {name} (likely taken)")
+                            
+                    except Exception as e:
+                        total_rejected += 1
+                        st.warning(f"⚠️ **Validation Error:** {name} (assumed taken)")
+            
+            # Update progress
+            progress = min(len(unique_names) / target_names, 1.0)
+            progress_bar.progress(progress)
+            
+            # Show detailed progress
+            status_text.text(f"📊 **Progress:** {len(unique_names)}/{target_names} unique names found | {total_checked} checked | {total_rejected} rejected")
+            
+            # If we have enough names, break
+            if len(unique_names) >= target_names:
+                break
+                
+            # If we need more names and have attempts left
+            if len(unique_names) < target_names and attempt < max_attempts:
+                st.write("🔄 **Generating more names...**")
+                
+        except Exception as e:
+            st.error(f"❌ **Attempt {attempt} Failed:** {str(e)}")
+            continue
+    
+    # Final results with enhanced feedback
+    progress_bar.progress(1.0)
     
     if len(unique_names) == 0:
-        st.warning("⚠️ No unique names found. Try different inputs or increase creativity settings.")
+        st.error("❌ **No Unique Names Found**")
+        st.warning("💡 **Suggestions:**")
+        st.write("- Try more specific or creative keywords")
+        st.write("- Use different business type descriptions")
+        st.write("- Consider different name styles or languages")
+        st.write("- The validation is now very conservative to ensure quality")
         return None
+        
     elif len(unique_names) < target_names:
-        st.warning(f"⚠️ Found {len(unique_names)} unique names (target was {target_names}). Consider trying different inputs.")
+        st.warning(f"⚠️ **Partial Success:** Found {len(unique_names)} unique names (target was {target_names})")
+        st.info("💡 **Note:** Enhanced validation is very conservative to ensure quality. Fewer but better names!")
+        
+    else:
+        st.success(f"🎉 **Success:** Found {len(unique_names)} unique names!")
+    
+    # Final statistics
+    st.info(f"📈 **Validation Stats:** {total_checked} names checked | {total_rejected} rejected | {len(unique_names)} approved")
     
     return unique_names
 
