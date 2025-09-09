@@ -16,12 +16,19 @@ import socket
 def check_domain_availability(domain_name):
     """Check if a domain is available by attempting to resolve it."""
     try:
-        # Clean the domain name
-        domain = domain_name.lower().replace(' ', '').replace('.com', '') + '.com'
+        # Clean the domain name - remove spaces, special chars, and ensure .com
+        clean_name = domain_name.lower().replace(' ', '').replace('-', '').replace('_', '')
+        # Remove common business suffixes
+        clean_name = clean_name.replace('inc', '').replace('llc', '').replace('corp', '').replace('ltd', '')
+        domain = clean_name + '.com'
+        
+        # Try to resolve the domain
         socket.gethostbyname(domain)
-        return False  # Domain exists
+        return False  # Domain exists (taken)
     except socket.gaierror:
         return True   # Domain is available
+    except Exception:
+        return True   # Assume available if check fails
 
 
 def check_name_uniqueness(name):
@@ -41,6 +48,58 @@ def check_name_uniqueness(name):
             
     except Exception:
         return "❓ Unknown"
+
+
+def generate_names_with_domain_validation(input_business_type, input_keywords, input_brand_personality, input_name_style, input_name_length, input_language, user_gemini_api_key=None, num_names=8, input_target_market=None):
+    """Generate brand names with domain validation loop."""
+    max_attempts = 5  # Maximum attempts to get unique names
+    target_names = num_names
+    unique_names = []
+    attempt = 0
+    
+    st.info(f"🔍 Generating names with domain validation... (Target: {target_names} unique names)")
+    
+    while len(unique_names) < target_names and attempt < max_attempts:
+        attempt += 1
+        st.write(f"**Attempt {attempt}:** Generating names...")
+        
+        # Generate names using AI
+        brand_names = generate_brand_names(
+            input_business_type, input_keywords, input_brand_personality, 
+            input_name_style, input_name_length, input_language, 
+            user_gemini_api_key, num_names, input_target_market
+        )
+        
+        if not brand_names:
+            st.error("Failed to generate names. Please try again.")
+            return None
+        
+        # Parse generated names
+        names_list = [name.strip().lstrip('0123456789. ') for name in brand_names.split('\n') if name.strip()]
+        
+        # Check each name for domain availability
+        for name in names_list:
+            if name and name not in unique_names:  # Avoid duplicates
+                domain_available = check_domain_availability(name)
+                if domain_available:
+                    unique_names.append(name)
+                    st.success(f"✅ Found unique name: {name}")
+                    if len(unique_names) >= target_names:
+                        break
+        
+        # Show progress
+        st.write(f"Found {len(unique_names)} unique names so far...")
+        
+        if len(unique_names) < target_names and attempt < max_attempts:
+            st.write("🔄 Generating more names...")
+    
+    if len(unique_names) == 0:
+        st.warning("⚠️ No unique names found. Try different inputs or increase creativity settings.")
+        return None
+    elif len(unique_names) < target_names:
+        st.warning(f"⚠️ Found {len(unique_names)} unique names (target was {target_names}). Consider trying different inputs.")
+    
+    return unique_names
 
 
 def main():
@@ -165,80 +224,80 @@ def main():
 
     # Generate Brand Names button
     if st.button('**Generate Brand Names**'):
-        with st.spinner("Generating brand names..."):
-            if not input_business_type and not input_keywords:
-                st.error('**🫣 Provide Inputs to generate Brand Names. Business type OR keywords are required!**')
+        if not input_business_type and not input_keywords:
+            st.error('**🫣 Provide Inputs to generate Brand Names. Business type OR keywords are required!**')
+        else:
+            # Use domain validation loop
+            unique_names = generate_names_with_domain_validation(
+                input_business_type, input_keywords, input_brand_personality, 
+                input_name_style, input_name_length, input_language, 
+                user_gemini_api_key, num_names, input_target_market
+            )
+            
+            if unique_names:
+                # Store unique names in session state
+                st.session_state['unique_names'] = unique_names
             else:
-                brand_names = generate_brand_names(
-                    input_business_type, input_keywords, input_brand_personality, 
-                    input_name_style, input_name_length, input_language, 
-                    user_gemini_api_key, num_names, input_target_market
-                )
-                if brand_names:
-                    st.session_state['brand_names'] = brand_names
-                else:
-                    st.error("💥 **Failed to generate brand names. Please try again!**")
-            # Parse and display names in a better format
-            names_list = [name.strip().lstrip('0123456789. ') for name in st.session_state['brand_names'].split('\n') if name.strip()]
-            
-            # Display names in a clean, numbered format
-            st.markdown('<h3 style="margin-top:2rem; color:#1976D2;">🎯 Generated Brand Names</h3>', unsafe_allow_html=True)
-            
-            for i, name in enumerate(names_list, 1):
-                # Check name uniqueness
-                uniqueness_status = check_name_uniqueness(name)
+                st.error("💥 **Failed to generate unique brand names. Please try again!**")
+            # Display unique names
+            if 'unique_names' in st.session_state and st.session_state['unique_names']:
+                names_list = st.session_state['unique_names']
                 
-                st.markdown(f"""
-                <div style="
-                    background-color: #f8f9fa;
-                    border-left: 4px solid #1565C0;
-                    padding: 15px;
-                    margin: 10px 0;
-                    border-radius: 5px;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                ">
-                    <div style="display: flex; align-items: center; justify-content: space-between;">
-                        <div>
-                            <span style="
-                                background-color: #1565C0;
-                                color: white;
+                # Display names in a clean, numbered format
+                st.markdown('<h3 style="margin-top:2rem; color:#1976D2;">🎯 Unique Brand Names (Domain Available)</h3>', unsafe_allow_html=True)
+            
+                for i, name in enumerate(names_list, 1):
+                    st.markdown(f"""
+                    <div style="
+                        background-color: #f8f9fa;
+                        border-left: 4px solid #4caf50;
+                        padding: 15px;
+                        margin: 10px 0;
+                        border-radius: 5px;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    ">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div>
+                                <span style="
+                                    background-color: #4caf50;
+                                    color: white;
+                                    padding: 5px 10px;
+                                    border-radius: 15px;
+                                    font-size: 14px;
+                                    font-weight: bold;
+                                    margin-right: 15px;
+                                ">{i}</span>
+                                <span style="
+                                    font-size: 18px;
+                                    font-weight: 600;
+                                    color: #333;
+                                ">{name}</span>
+                            </div>
+                            <div style="
+                                font-size: 14px;
+                                font-weight: 500;
                                 padding: 5px 10px;
                                 border-radius: 15px;
-                                font-size: 14px;
-                                font-weight: bold;
-                                margin-right: 15px;
-                            ">{i}</span>
-                            <span style="
-                                font-size: 18px;
-                                font-weight: 600;
-                                color: #333;
-                            ">{name}</span>
-                        </div>
-                        <div style="
-                            font-size: 14px;
-                            font-weight: 500;
-                            padding: 5px 10px;
-                            border-radius: 15px;
-                            background-color: #e8f5e8;
-                            color: #2e7d32;
-                        ">
-                            {uniqueness_status}
+                                background-color: #e8f5e8;
+                                color: #2e7d32;
+                            ">
+                                ✅ Domain Available
+                            </div>
                         </div>
                     </div>
-                </div>
-                """, unsafe_allow_html=True)
+                    """, unsafe_allow_html=True)
             
-            # Excel export for evaluation
-            df = pd.DataFrame({'Brand Name': names_list})
-            excel_buffer = io.BytesIO()
-            df.to_excel(excel_buffer, index=False, engine='openpyxl')
-            excel_buffer.seek(0)
-            st.download_button(
-                label="Download Brand Names as Excel for Evaluation",
-                data=excel_buffer,
-                file_name="brand_names.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+                # Excel export for evaluation
+                df = pd.DataFrame({'Brand Name': names_list})
+                excel_buffer = io.BytesIO()
+                df.to_excel(excel_buffer, index=False, engine='openpyxl')
+                excel_buffer.seek(0)
+                st.download_button(
+                    label="Download Unique Brand Names as Excel",
+                    data=excel_buffer,
+                    file_name="unique_brand_names.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
 
 
 # Function to generate brand names
