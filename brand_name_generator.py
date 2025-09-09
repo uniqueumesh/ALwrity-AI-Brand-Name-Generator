@@ -9,6 +9,38 @@ from tenacity import (
 )
 import pandas as pd
 import io
+import requests
+import socket
+
+
+def check_domain_availability(domain_name):
+    """Check if a domain is available by attempting to resolve it."""
+    try:
+        # Clean the domain name
+        domain = domain_name.lower().replace(' ', '').replace('.com', '') + '.com'
+        socket.gethostbyname(domain)
+        return False  # Domain exists
+    except socket.gaierror:
+        return True   # Domain is available
+
+
+def check_name_uniqueness(name):
+    """Check if a brand name appears to be unique using basic validation."""
+    try:
+        # Clean the name for search
+        search_name = name.replace(' ', '+')
+        
+        # Simple Google search check (basic implementation)
+        # Note: This is a simplified check - in production, you'd use proper APIs
+        domain_available = check_domain_availability(name)
+        
+        if domain_available:
+            return "✅ Likely Unique"
+        else:
+            return "⚠️ May Exist"
+            
+    except Exception:
+        return "❓ Unknown"
 
 
 def main():
@@ -82,18 +114,18 @@ def main():
         with col1:
             input_business_type = st.text_input(
                 '**🏢 What type of business are you starting?**',
-                placeholder="e.g., Tech startup, Restaurant, Consulting firm",
-                help="Describe your business type or industry."
+                placeholder="e.g., AI-powered fitness app for seniors, Artisanal coffee roastery, Sustainable fashion brand",
+                help="Be specific! Instead of 'restaurant', try 'farm-to-table vegan restaurant' or 'AI-powered fitness app for seniors'"
             )
             input_keywords = st.text_input(
                 '**🔑 Enter keywords related to your brand**',
-                placeholder="e.g., innovation, quality, speed, trust",
-                help="Use 2-4 words that represent your brand values or key concepts."
+                placeholder="e.g., zen-like, minimalist, artisanal, eco-conscious, futuristic",
+                help="Use unique, specific words! Instead of 'innovation, quality', try 'zen-like, minimalist, artisanal' or 'eco-conscious, futuristic, sustainable'"
             )
             input_brand_personality = st.text_area(
                 '**💭 Describe your brand personality** (Optional)',
-                placeholder="e.g., Modern, friendly, professional, innovative, eco-friendly...",
-                help="Describe how you want your brand to be perceived by customers."
+                placeholder="e.g., Scandinavian-inspired, community-focused, artisanal, zen-like, futuristic, bohemian",
+                help="Be creative! Instead of 'modern, friendly', try 'Scandinavian-inspired, community-focused' or 'zen-like, minimalist, artisanal'"
             )
 
         with col2:
@@ -123,8 +155,8 @@ def main():
             # Add Target Market input
             input_target_market = st.text_input(
                 '🎯 Target Market (Optional)',
-                placeholder="e.g., B2B, Consumers, Millennials, Global",
-                help="Specify your target market for more tailored names."
+                placeholder="e.g., eco-conscious millennials in urban areas, health-conscious professionals, creative entrepreneurs",
+                help="Be specific! Instead of 'consumers', try 'eco-conscious millennials in urban areas' or 'health-conscious professionals aged 25-40'"
             )
 
     # Add option for number of names
@@ -153,6 +185,9 @@ def main():
             st.markdown('<h3 style="margin-top:2rem; color:#1976D2;">🎯 Generated Brand Names</h3>', unsafe_allow_html=True)
             
             for i, name in enumerate(names_list, 1):
+                # Check name uniqueness
+                uniqueness_status = check_name_uniqueness(name)
+                
                 st.markdown(f"""
                 <div style="
                     background-color: #f8f9fa;
@@ -179,6 +214,16 @@ def main():
                                 color: #333;
                             ">{name}</span>
                         </div>
+                        <div style="
+                            font-size: 14px;
+                            font-weight: 500;
+                            padding: 5px 10px;
+                            border-radius: 15px;
+                            background-color: #e8f5e8;
+                            color: #2e7d32;
+                        ">
+                            {uniqueness_status}
+                        </div>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -200,9 +245,9 @@ def main():
 def generate_brand_names(input_business_type, input_keywords, input_brand_personality, input_name_style, input_name_length, input_language, user_gemini_api_key=None, num_names=8, input_target_market=None):
     """ Function to call upon LLM to get the work done. """
     
-    # Enhanced prompt for unique brand name generation
+    # Refined prompt for brand name generation
     brand_guidelines = f"""
-Generate {num_names} COMPLETELY UNIQUE and never-before-seen brand names for the following business.
+Generate {num_names} unique and creative brand names for the following business.
 
 Business Requirements:
 - Business Type: {input_business_type}
@@ -213,46 +258,21 @@ Business Requirements:
 - Language: {input_language}
 - Target Market: {input_target_market}
 
-CRITICAL UNIQUENESS REQUIREMENTS:
-- Create names that have NEVER been used by any existing brand
-- Avoid ALL common industry terms, generic words, and overused patterns
-- Do NOT use names that sound similar to existing major brands
-- Generate truly original combinations that don't exist anywhere
-- Create innovative word combinations and creative twists
-- Use abstract concepts, made-up words, and unique linguistic combinations
-
-CREATIVITY AND INNOVATION RULES:
-- Use portmanteau techniques (combining words creatively)
-- Incorporate abstract concepts and emotional elements
-- Create made-up words that sound natural and brandable
-- Use less common languages, roots, and linguistic elements
-- Apply creative spelling variations and unique pronunciations
-- Combine unexpected word pairs for memorable results
-
-INDUSTRY-SPECIFIC UNIQUENESS RULES:
-- AVOID common suffixes: -ly, -ify, -tech, -hub, -lab, -works, -solutions
-- AVOID generic prefixes: new-, pro-, smart-, digital-, eco-
-- AVOID overused industry terms and clichéd combinations
-- Create industry-specific creative alternatives
-- Use unconventional approaches for the business type
-
-QUALITY AND BRANDABILITY REQUIREMENTS:
-- Names must be easy to pronounce and spell
-- Ensure cultural appropriateness for {input_language}
+Rules for Brand Name Generation:
+- Each name must be unique and memorable
+- Names should be easy to pronounce and spell
+- Avoid generic or overused terms
+- Consider trademark availability (avoid obvious conflicts)
+- Make names brandable and distinctive
+- If target market is specified, tailor names accordingly
+- Match the requested name style and length preferences
+- Write in this language: {input_language}
+- Ensure names are culturally appropriate
 - Make names sound professional and trustworthy
 - Consider domain name availability potential
-- Match the requested name style: {input_name_style}
-- Match the requested name length: {input_name_length}
-- Tailor to target market: {input_target_market}
+- Avoid names that are too similar to existing major brands
 
-GENERATION INSTRUCTIONS:
-- Think creatively and outside conventional naming patterns
-- Use divergent thinking to create unexpected combinations
-- Focus on memorability and distinctiveness
-- Ensure each name is completely different from the others
-- Create names that stand out in the marketplace
-
-Generate {num_names} completely unique, innovative brand name options. List only the names, one per line, without numbers or explanations.
+Generate {num_names} different brand name options. List only the names, one per line, without numbers or explanations.
 """
 
     brand_names = gemini_text_response(brand_guidelines, user_gemini_api_key)
@@ -276,8 +296,8 @@ def gemini_text_response(prompt, user_gemini_api_key=None):
         st.error(f"Failed to configure Gemini: {err}")
         return None
     generation_config = {
-        "temperature": 0.7,
-        "top_p": 0.4,
+        "temperature": 0.9,
+        "top_p": 0.6,
         "top_k": 1,
         "max_output_tokens": 1024
     }
