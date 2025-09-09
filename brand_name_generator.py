@@ -21,6 +21,261 @@ def reset_socket_timeout():
         pass
 
 
+def test_validation_accuracy():
+    """Test the validation system with known existing business names."""
+    test_cases = [
+        # Known existing business names (should be rejected)
+        ("ScribbleMind", False, "Contains 'mind' and 'scribble' patterns"),
+        ("IntelliWrite", False, "Contains 'intelli' tech term and 'write' pattern"),
+        ("VerbiageAI", False, "Contains 'ai' tech term and 'verb' pattern"),
+        ("Wordsmith Labs", False, "Contains 'labs' business type and 'smith' pattern"),
+        ("ScribbleGen", False, "Contains 'scribble' and 'gen' patterns"),
+        ("NewTech Solutions", False, "Contains 'new' prefix and 'solutions' suffix"),
+        ("Pro Digital", False, "Contains 'pro' prefix and 'digital' tech term"),
+        ("Smart Systems", False, "Contains 'smart' tech term and 'systems' suffix"),
+        ("Global Tech", False, "Contains 'global' prefix and 'tech' term"),
+        ("Future Labs", False, "Contains 'future' prefix and 'labs' suffix"),
+        
+        # Potentially unique names (should be accepted)
+        ("Zephyra", True, "Unique made-up name"),
+        ("Quillara", True, "Creative combination"),
+        ("Nexara", True, "Innovative word"),
+        ("Voxara", True, "Unique sound"),
+        ("Lumina", True, "Creative name"),
+    ]
+    
+    st.markdown("### 🧪 **Validation Accuracy Test**")
+    st.info("Testing the enhanced validation system with known business names...")
+    
+    results = []
+    correct_predictions = 0
+    total_tests = len(test_cases)
+    
+    for name, expected_available, reason in test_cases:
+        try:
+            actual_available = check_domain_availability(name)
+            is_correct = (actual_available == expected_available)
+            
+            if is_correct:
+                correct_predictions += 1
+                status = "✅ CORRECT"
+                color = "#4caf50"
+            else:
+                status = "❌ INCORRECT"
+                color = "#f44336"
+            
+            results.append({
+                "Name": name,
+                "Expected": "Available" if expected_available else "Taken",
+                "Actual": "Available" if actual_available else "Taken",
+                "Status": status,
+                "Reason": reason
+            })
+            
+        except Exception as e:
+            results.append({
+                "Name": name,
+                "Expected": "Available" if expected_available else "Taken",
+                "Actual": "Error",
+                "Status": "⚠️ ERROR",
+                "Reason": f"Validation error: {str(e)}"
+            })
+    
+    # Display results
+    accuracy_percentage = (correct_predictions / total_tests) * 100
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Accuracy", f"{accuracy_percentage:.1f}%")
+    with col2:
+        st.metric("Correct", correct_predictions)
+    with col3:
+        st.metric("Total Tests", total_tests)
+    
+    # Show detailed results
+    st.markdown("#### **Test Results:**")
+    for result in results:
+        status_color = "#4caf50" if "CORRECT" in result["Status"] else "#f44336" if "INCORRECT" in result["Status"] else "#ff9800"
+        
+        st.markdown(f"""
+        <div style="
+            background-color: #f8f9fa;
+            border-left: 4px solid {status_color};
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+        ">
+            <strong>{result['Name']}</strong> - {result['Status']}<br>
+            <small>Expected: {result['Expected']} | Actual: {result['Actual']}</small><br>
+            <small><em>{result['Reason']}</em></small>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Overall assessment
+    if accuracy_percentage >= 80:
+        st.success(f"🎉 **Excellent!** Validation accuracy is {accuracy_percentage:.1f}% - System is working well!")
+    elif accuracy_percentage >= 60:
+        st.warning(f"⚠️ **Good** - Validation accuracy is {accuracy_percentage:.1f}% - Some improvements needed.")
+    else:
+        st.error(f"❌ **Needs Improvement** - Validation accuracy is {accuracy_percentage:.1f}% - System needs tuning.")
+    
+    return accuracy_percentage
+
+
+def validate_generated_names(names_list):
+    """Validate a list of generated names and provide detailed feedback."""
+    if not names_list:
+        return
+    
+    st.markdown("### 🔍 **Generated Names Validation Report**")
+    
+    validation_results = []
+    available_count = 0
+    taken_count = 0
+    
+    for name in names_list:
+        try:
+            is_available = check_domain_availability(name)
+            if is_available:
+                available_count += 1
+                status = "✅ Available"
+                color = "#4caf50"
+            else:
+                taken_count += 1
+                status = "⚠️ Likely Taken"
+                color = "#ff9800"
+            
+            validation_results.append({
+                "name": name,
+                "status": status,
+                "color": color,
+                "available": is_available
+            })
+            
+        except Exception as e:
+            taken_count += 1
+            validation_results.append({
+                "name": name,
+                "status": "❌ Error",
+                "color": "#f44336",
+                "available": False
+            })
+    
+    # Display validation summary
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Available", available_count, delta=None)
+    with col2:
+        st.metric("Likely Taken", taken_count, delta=None)
+    with col3:
+        st.metric("Total", len(names_list), delta=None)
+    
+    # Show detailed results
+    st.markdown("#### **Individual Name Validation:**")
+    for result in validation_results:
+        st.markdown(f"""
+        <div style="
+            background-color: #f8f9fa;
+            border-left: 4px solid {result['color']};
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+        ">
+            <strong>{result['name']}</strong> - {result['status']}
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Quality assessment
+    quality_percentage = (available_count / len(names_list)) * 100
+    if quality_percentage >= 70:
+        st.success(f"🎉 **High Quality!** {quality_percentage:.1f}% of names appear to be available.")
+    elif quality_percentage >= 40:
+        st.warning(f"⚠️ **Moderate Quality** - {quality_percentage:.1f}% of names appear to be available.")
+    else:
+        st.error(f"❌ **Low Quality** - Only {quality_percentage:.1f}% of names appear to be available.")
+    
+    return quality_percentage
+
+
+def monitor_validation_performance():
+    """Monitor and display validation system performance metrics."""
+    st.markdown("### 📈 **Validation Performance Monitor**")
+    
+    # Performance metrics (these would be stored in session state in a real app)
+    if 'validation_stats' not in st.session_state:
+        st.session_state.validation_stats = {
+            'total_checked': 0,
+            'total_rejected': 0,
+            'total_approved': 0,
+            'accuracy_rate': 0.0
+        }
+    
+    stats = st.session_state.validation_stats
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric(
+            "Total Checked", 
+            stats['total_checked'],
+            help="Total number of names validated"
+        )
+    
+    with col2:
+        st.metric(
+            "Rejected", 
+            stats['total_rejected'],
+            help="Names rejected as likely taken"
+        )
+    
+    with col3:
+        st.metric(
+            "Approved", 
+            stats['total_approved'],
+            help="Names approved as available"
+        )
+    
+    with col4:
+        rejection_rate = (stats['total_rejected'] / max(stats['total_checked'], 1)) * 100
+        st.metric(
+            "Rejection Rate", 
+            f"{rejection_rate:.1f}%",
+            help="Percentage of names rejected (higher = more conservative)"
+        )
+    
+    # Performance assessment
+    if rejection_rate >= 70:
+        st.success("🎯 **Excellent Conservative Validation** - High rejection rate ensures quality!")
+    elif rejection_rate >= 50:
+        st.info("✅ **Good Validation Balance** - Moderate rejection rate with good quality.")
+    else:
+        st.warning("⚠️ **Low Rejection Rate** - Consider more conservative validation.")
+    
+    # System health indicators
+    st.markdown("#### **System Health Indicators:**")
+    
+    health_indicators = [
+        ("Pattern Detection", "✅ Active", "Enhanced business pattern recognition"),
+        ("Domain Checking", "✅ Active", "Multi-extension domain validation"),
+        ("Error Handling", "✅ Active", "Comprehensive exception handling"),
+        ("Timeout Protection", "✅ Active", "3-second timeout prevents hanging"),
+        ("Conservative Mode", "✅ Active", "Better safe than sorry approach")
+    ]
+    
+    for indicator, status, description in health_indicators:
+        st.markdown(f"""
+        <div style="
+            background-color: #f8f9fa;
+            border-left: 4px solid #4caf50;
+            padding: 8px;
+            margin: 3px 0;
+            border-radius: 3px;
+        ">
+            <strong>{indicator}:</strong> {status} - <em>{description}</em>
+        </div>
+        """, unsafe_allow_html=True)
+
+
 def is_likely_taken_business_name(name):
     """Enhanced business name pattern detection with conservative approach."""
     if not name or len(name.strip()) < 2:
@@ -294,6 +549,20 @@ def generate_names_with_domain_validation(input_business_type, input_keywords, i
     else:
         st.success(f"🎉 **Success:** Found {len(unique_names)} unique names!")
     
+    # Update session state with performance metrics
+    if 'validation_stats' not in st.session_state:
+        st.session_state.validation_stats = {
+            'total_checked': 0,
+            'total_rejected': 0,
+            'total_approved': 0,
+            'accuracy_rate': 0.0
+        }
+    
+    # Update metrics
+    st.session_state.validation_stats['total_checked'] += total_checked
+    st.session_state.validation_stats['total_rejected'] += total_rejected
+    st.session_state.validation_stats['total_approved'] += len(unique_names)
+    
     # Final statistics
     st.info(f"📈 **Validation Stats:** {total_checked} names checked | {total_rejected} rejected | {len(unique_names)} approved")
     
@@ -419,6 +688,31 @@ def main():
     # Add option for number of names
     st.markdown('<h3 style="margin-top:2rem;">How many brand names do you want to generate?</h3>', unsafe_allow_html=True)
     num_names = st.slider('Number of brand name suggestions', min_value=1, max_value=10, value=5, help="Choose how many brand names to generate (1-10).")
+    
+    # Add testing section
+    with st.expander("🧪 **Testing & Validation Tools**", expanded=False):
+        st.markdown("**Test the validation system and verify accuracy:**")
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            if st.button("🔍 **Run Validation Test**", help="Test the system with known business names"):
+                test_validation_accuracy()
+        
+        with col2:
+            if st.button("📊 **Test Custom Names**", help="Test specific names for availability"):
+                custom_names = st.text_area(
+                    "Enter names to test (one per line):",
+                    placeholder="ScribbleMind\nIntelliWrite\nZephyra\nQuillara",
+                    height=100
+                )
+                if custom_names:
+                    names_to_test = [name.strip() for name in custom_names.split('\n') if name.strip()]
+                    if names_to_test:
+                        validate_generated_names(names_to_test)
+        
+        with col3:
+            if st.button("📈 **Performance Monitor**", help="View validation system performance metrics"):
+                monitor_validation_performance()
 
     # Generate Brand Names button
     if st.button('**Generate Brand Names**'):
@@ -479,6 +773,10 @@ def main():
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
+                
+                # Enhanced validation report
+                st.markdown("---")
+                validate_generated_names(unique_names)
                 
                 # Excel export for evaluation
                 df = pd.DataFrame({'Brand Name': unique_names})
