@@ -200,9 +200,9 @@ def main():
 def generate_brand_names(input_business_type, input_keywords, input_brand_personality, input_name_style, input_name_length, input_language, user_gemini_api_key=None, num_names=8, input_target_market=None):
     """ Function to call upon LLM to get the work done. """
     
-    # Refined prompt for brand name generation
+    # Enhanced prompt for unique brand name generation
     brand_guidelines = f"""
-Generate {num_names} unique and creative brand names for the following business.
+Generate {num_names} COMPLETELY UNIQUE and never-before-seen brand names for the following business.
 
 Business Requirements:
 - Business Type: {input_business_type}
@@ -213,21 +213,46 @@ Business Requirements:
 - Language: {input_language}
 - Target Market: {input_target_market}
 
-Rules for Brand Name Generation:
-- Each name must be unique and memorable
-- Names should be easy to pronounce and spell
-- Avoid generic or overused terms
-- Consider trademark availability (avoid obvious conflicts)
-- Make names brandable and distinctive
-- If target market is specified, tailor names accordingly
-- Match the requested name style and length preferences
-- Write in this language: {input_language}
-- Ensure names are culturally appropriate
+CRITICAL UNIQUENESS REQUIREMENTS:
+- Create names that have NEVER been used by any existing brand
+- Avoid ALL common industry terms, generic words, and overused patterns
+- Do NOT use names that sound similar to existing major brands
+- Generate truly original combinations that don't exist anywhere
+- Create innovative word combinations and creative twists
+- Use abstract concepts, made-up words, and unique linguistic combinations
+
+CREATIVITY AND INNOVATION RULES:
+- Use portmanteau techniques (combining words creatively)
+- Incorporate abstract concepts and emotional elements
+- Create made-up words that sound natural and brandable
+- Use less common languages, roots, and linguistic elements
+- Apply creative spelling variations and unique pronunciations
+- Combine unexpected word pairs for memorable results
+
+INDUSTRY-SPECIFIC UNIQUENESS RULES:
+- AVOID common suffixes: -ly, -ify, -tech, -hub, -lab, -works, -solutions
+- AVOID generic prefixes: new-, pro-, smart-, digital-, eco-
+- AVOID overused industry terms and clichéd combinations
+- Create industry-specific creative alternatives
+- Use unconventional approaches for the business type
+
+QUALITY AND BRANDABILITY REQUIREMENTS:
+- Names must be easy to pronounce and spell
+- Ensure cultural appropriateness for {input_language}
 - Make names sound professional and trustworthy
 - Consider domain name availability potential
-- Avoid names that are too similar to existing major brands
+- Match the requested name style: {input_name_style}
+- Match the requested name length: {input_name_length}
+- Tailor to target market: {input_target_market}
 
-Generate {num_names} different brand name options. List only the names, one per line, without numbers or explanations.
+GENERATION INSTRUCTIONS:
+- Think creatively and outside conventional naming patterns
+- Use divergent thinking to create unexpected combinations
+- Focus on memorability and distinctiveness
+- Ensure each name is completely different from the others
+- Create names that stand out in the marketplace
+
+Generate {num_names} completely unique, innovative brand name options. List only the names, one per line, without numbers or explanations.
 """
 
     brand_names = gemini_text_response(brand_guidelines, user_gemini_api_key)
