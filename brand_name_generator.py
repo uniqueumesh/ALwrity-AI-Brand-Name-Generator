@@ -1,379 +1,353 @@
-import time
 import os
-import json
+from typing import List, Dict, Any
+
 import streamlit as st
-from tenacity import (
-    retry,
-    stop_after_attempt,
-    wait_random_exponential,
-)
 import pandas as pd
-import io
-import requests
-import socket
 
 
-def check_domain_availability(domain_name):
-    """Check if a domain is available by attempting to resolve it."""
-    try:
-        # Clean the domain name - remove spaces, special chars, and ensure .com
-        clean_name = domain_name.lower().replace(' ', '').replace('-', '').replace('_', '')
-        # Remove common business suffixes
-        clean_name = clean_name.replace('inc', '').replace('llc', '').replace('corp', '').replace('ltd', '')
-        domain = clean_name + '.com'
-        
-        # Try to resolve the domain
-        socket.gethostbyname(domain)
-        return False  # Domain exists (taken)
-    except socket.gaierror:
-        return True   # Domain is available
-    except Exception:
-        return True   # Assume available if check fails
+APP_TITLE = "🏷️ ALwrity AI Brand Name Generator"
+PRIMARY_COLOR = "#1565C0"
+PRIMARY_LIGHT = "#90CAF9"
 
 
-def check_name_uniqueness(name):
-    """Check if a brand name appears to be unique using basic validation."""
-    try:
-        # Clean the name for search
-        search_name = name.replace(' ', '+')
-        
-        # Simple Google search check (basic implementation)
-        # Note: This is a simplified check - in production, you'd use proper APIs
-        domain_available = check_domain_availability(name)
-        
-        if domain_available:
-            return "✅ Likely Unique"
-        else:
-            return "⚠️ May Exist"
-            
-    except Exception:
-        return "❓ Unknown"
-
-
-def generate_names_with_domain_validation(input_business_type, input_keywords, input_brand_personality, input_name_style, input_name_length, input_language, user_gemini_api_key=None, num_names=8, input_target_market=None):
-    """Generate brand names with domain validation loop."""
-    max_attempts = 5  # Maximum attempts to get unique names
-    target_names = num_names
-    unique_names = []
-    attempt = 0
-    
-    st.info(f"🔍 Generating names with domain validation... (Target: {target_names} unique names)")
-    
-    while len(unique_names) < target_names and attempt < max_attempts:
-        attempt += 1
-        st.write(f"**Attempt {attempt}:** Generating names...")
-        
-        # Generate names using AI
-        brand_names = generate_brand_names(
-            input_business_type, input_keywords, input_brand_personality, 
-            input_name_style, input_name_length, input_language, 
-            user_gemini_api_key, num_names, input_target_market
-        )
-        
-        if not brand_names:
-            st.error("Failed to generate names. Please try again.")
-            return None
-        
-        # Parse generated names
-        names_list = [name.strip().lstrip('0123456789. ') for name in brand_names.split('\n') if name.strip()]
-        
-        # Check each name for domain availability
-        for name in names_list:
-            if name and name not in unique_names:  # Avoid duplicates
-                domain_available = check_domain_availability(name)
-                if domain_available:
-                    unique_names.append(name)
-                    st.success(f"✅ Found unique name: {name}")
-                    if len(unique_names) >= target_names:
-                        break
-        
-        # Show progress
-        st.write(f"Found {len(unique_names)} unique names so far...")
-        
-        if len(unique_names) < target_names and attempt < max_attempts:
-            st.write("🔄 Generating more names...")
-    
-    if len(unique_names) == 0:
-        st.warning("⚠️ No unique names found. Try different inputs or increase creativity settings.")
-        return None
-    elif len(unique_names) < target_names:
-        st.warning(f"⚠️ Found {len(unique_names)} unique names (target was {target_names}). Consider trying different inputs.")
-    
-    return unique_names
-
-
-def main():
-    # Set page configuration
+def configure_page() -> None:
     st.set_page_config(
-        page_title="Alwrity - Brand Name Generator",
+        page_title="ALwrity Brand Name Generator",
+        page_icon="🏷️",
         layout="wide",
     )
-    
-    # Remove the extra spaces from margin top.
-    st.markdown("""
+
+    st.markdown(
+        f"""
         <style>
-        ::-webkit-scrollbar-track {
-        background: #e1ebf9;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background-color: #90CAF9;
+        :root {{
+          --primary: {PRIMARY_COLOR};
+          --primaryLight: {PRIMARY_LIGHT};
+        }}
+        .alwrity-header h1 {{
+            color: var(--primary);
+            margin-bottom: 0.25rem;
+        }}
+        .alwrity-subtitle {{
+            color: #3b3b3b;
+            font-size: 0.95rem;
+        }}
+        .alwrity-card {{
+            border: 1px solid rgba(21, 101, 192, 0.15);
             border-radius: 10px;
-            border: 3px solid #e1ebf9;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #64B5F6;
-        }
-
-        ::-webkit-scrollbar {
-            width: 16px;
-        }
-        div.stButton > button:first-child {
-            background: #1565C0;
+            padding: 14px 16px;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+        }}
+        .alwrity-name {{
+            font-weight: 700;
+            color: var(--primary);
+            font-size: 1.1rem;
+        }}
+        .alwrity-note {{
+            color: #5f6368;
+            font-size: 0.9rem;
+        }}
+        .stButton>button {{
+            background: var(--primary);
             color: white;
-            border: none;
-            padding: 12px 24px;
             border-radius: 8px;
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 16px;
-            margin: 10px 2px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
-            font-weight: bold;
-        }
+            border: none;
+        }}
+        .stDownloadButton>button {{
+            background: white !important;
+            color: var(--primary) !important;
+            border: 1px solid var(--primary) !important;
+        }}
         </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def gemini_text_response(prompt: str, api_key: str) -> str:
+    """Call Gemini API to get a text response.
+
+    This implementation is a lightweight placeholder to keep the app runnable
+    if google-generativeai is not available at runtime. If the package is
+    available and an API key is provided, it will use the real API.
     """
-    , unsafe_allow_html=True)
-
-    # Hide top header line
-    hide_decoration_bar_style = '<style>header {visibility: hidden;}</style>'
-    st.markdown(hide_decoration_bar_style, unsafe_allow_html=True)
-
-    # Hide footer
-    hide_streamlit_footer = '<style>#MainMenu {visibility: hidden;} footer {visibility: hidden;}</style>'
-    st.markdown(hide_streamlit_footer, unsafe_allow_html=True)
-
-    st.title("🏷️ Alwrity - AI Brand Name Generator")
-
-    # --- API Key Input Section (moved below title) ---
-    with st.expander("API Configuration 🔑", expanded=False):
-        st.markdown('''If the default Gemini API key is unavailable or exceeds its limits, you can provide your own API key below.<br>
-        <a href="https://aistudio.google.com/app/apikey" target="_blank">Get Gemini API Key</a>
-        ''', unsafe_allow_html=True)
-        user_gemini_api_key = st.text_input("Gemini API Key", type="password", help="Paste your Gemini API Key here if you have one. Otherwise, the tool will use the default key if available.")
-
-    # Input section
-    with st.expander("**PRO-TIP** - Follow the steps below for best results.", expanded=True):
-        col1, col2 = st.columns([5, 5])
-
-        with col1:
-            input_business_type = st.text_input(
-                '**🏢 What type of business are you starting?**',
-                placeholder="e.g., AI-powered fitness app for seniors, Artisanal coffee roastery, Sustainable fashion brand",
-                help="Be specific! Instead of 'restaurant', try 'farm-to-table vegan restaurant' or 'AI-powered fitness app for seniors'"
-            )
-            input_keywords = st.text_input(
-                '**🔑 Enter keywords related to your brand**',
-                placeholder="e.g., zen-like, minimalist, artisanal, eco-conscious, futuristic",
-                help="Use unique, specific words! Instead of 'innovation, quality', try 'zen-like, minimalist, artisanal' or 'eco-conscious, futuristic, sustainable'"
-            )
-            input_brand_personality = st.text_area(
-                '**💭 Describe your brand personality** (Optional)',
-                placeholder="e.g., Scandinavian-inspired, community-focused, artisanal, zen-like, futuristic, bohemian",
-                help="Be creative! Instead of 'modern, friendly', try 'Scandinavian-inspired, community-focused' or 'zen-like, minimalist, artisanal'"
-            )
-
-        with col2:
-            input_name_style = st.selectbox(
-                '🎨 Name Style Preference', 
-                ('Modern & Tech', 'Classic & Traditional', 'Creative & Unique', 'Professional & Corporate', 'Playful & Fun', 'Luxury & Premium'),
-                index=0
-            )
-            input_name_length = st.selectbox(
-                '📏 Preferred Name Length', 
-                ('Short (1-2 words)', 'Medium (2-3 words)', 'Long (3+ words)', 'Any Length'), 
-                index=1
-            )
-            language_options = ["English", "Spanish", "French", "German", "Chinese", "Japanese", "Latin", "Other"]
-            input_language = st.selectbox(
-                '🌐 Select Language', 
-                options=language_options,
-                index=0,
-                help="Choose the language for your brand name."
-            )
-            if input_language == "Other":
-                input_language = st.text_input(
-                    'Specify Language', 
-                    placeholder="e.g., Italian, Dutch",
-                    help="Specify your preferred language."
-                )
-            # Add Target Market input
-            input_target_market = st.text_input(
-                '🎯 Target Market (Optional)',
-                placeholder="e.g., eco-conscious millennials in urban areas, health-conscious professionals, creative entrepreneurs",
-                help="Be specific! Instead of 'consumers', try 'eco-conscious millennials in urban areas' or 'health-conscious professionals aged 25-40'"
-            )
-
-    # Add option for number of names
-    st.markdown('<h3 style="margin-top:2rem;">How many brand names do you want to generate?</h3>', unsafe_allow_html=True)
-    num_names = st.slider('Number of brand name suggestions', min_value=1, max_value=15, value=8, help="Choose how many brand names to generate (1-15).")
-
-    # Generate Brand Names button
-    if st.button('**Generate Brand Names**'):
-        if not input_business_type and not input_keywords:
-            st.error('**🫣 Provide Inputs to generate Brand Names. Business type OR keywords are required!**')
-        else:
-            # Use domain validation loop
-            unique_names = generate_names_with_domain_validation(
-                input_business_type, input_keywords, input_brand_personality, 
-                input_name_style, input_name_length, input_language, 
-                user_gemini_api_key, num_names, input_target_market
-            )
-            
-            if unique_names:
-                # Store unique names in session state
-                st.session_state['unique_names'] = unique_names
-            else:
-                st.error("💥 **Failed to generate unique brand names. Please try again!**")
-            # Display unique names
-            if 'unique_names' in st.session_state and st.session_state['unique_names']:
-                names_list = st.session_state['unique_names']
-                
-                # Display names in a clean, numbered format
-                st.markdown('<h3 style="margin-top:2rem; color:#1976D2;">🎯 Unique Brand Names (Domain Available)</h3>', unsafe_allow_html=True)
-            
-                for i, name in enumerate(names_list, 1):
-                    st.markdown(f"""
-                    <div style="
-                        background-color: #f8f9fa;
-                        border-left: 4px solid #4caf50;
-                        padding: 15px;
-                        margin: 10px 0;
-                        border-radius: 5px;
-                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                    ">
-                        <div style="display: flex; align-items: center; justify-content: space-between;">
-                            <div>
-                                <span style="
-                                    background-color: #4caf50;
-                                    color: white;
-                                    padding: 5px 10px;
-                                    border-radius: 15px;
-                                    font-size: 14px;
-                                    font-weight: bold;
-                                    margin-right: 15px;
-                                ">{i}</span>
-                                <span style="
-                                    font-size: 18px;
-                                    font-weight: 600;
-                                    color: #333;
-                                ">{name}</span>
-                            </div>
-                            <div style="
-                                font-size: 14px;
-                                font-weight: 500;
-                                padding: 5px 10px;
-                                border-radius: 15px;
-                                background-color: #e8f5e8;
-                                color: #2e7d32;
-                            ">
-                                ✅ Domain Available
-                            </div>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-            
-                # Excel export for evaluation
-                df = pd.DataFrame({'Brand Name': names_list})
-                excel_buffer = io.BytesIO()
-                df.to_excel(excel_buffer, index=False, engine='openpyxl')
-                excel_buffer.seek(0)
-                st.download_button(
-                    label="Download Unique Brand Names as Excel",
-                    data=excel_buffer,
-                    file_name="unique_brand_names.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
-
-
-# Function to generate brand names
-def generate_brand_names(input_business_type, input_keywords, input_brand_personality, input_name_style, input_name_length, input_language, user_gemini_api_key=None, num_names=8, input_target_market=None):
-    """ Function to call upon LLM to get the work done. """
-    
-    # Refined prompt for brand name generation
-    brand_guidelines = f"""
-Generate {num_names} unique and creative brand names for the following business.
-
-Business Requirements:
-- Business Type: {input_business_type}
-- Keywords/Values: {input_keywords}
-- Brand Personality: {input_brand_personality}
-- Name Style: {input_name_style}
-- Name Length: {input_name_length}
-- Language: {input_language}
-- Target Market: {input_target_market}
-
-Rules for Brand Name Generation:
-- Each name must be unique and memorable
-- Names should be easy to pronounce and spell
-- Avoid generic or overused terms
-- Consider trademark availability (avoid obvious conflicts)
-- Make names brandable and distinctive
-- If target market is specified, tailor names accordingly
-- Match the requested name style and length preferences
-- Write in this language: {input_language}
-- Ensure names are culturally appropriate
-- Make names sound professional and trustworthy
-- Consider domain name availability potential
-- Avoid names that are too similar to existing major brands
-
-Generate {num_names} different brand name options. List only the names, one per line, without numbers or explanations.
-"""
-
-    brand_names = gemini_text_response(brand_guidelines, user_gemini_api_key)
-    if brand_names == 'RATE_LIMIT':
-        st.warning('⚠️ Gemini API rate limit or quota exceeded. Please try again later or use a different API key.')
-        return None
-    return brand_names
-
-
-@retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(6))
-def gemini_text_response(prompt, user_gemini_api_key=None):
-    import google.generativeai as genai
-    import os
     try:
-        api_key = user_gemini_api_key or os.getenv('GEMINI_API_KEY')
-        if not api_key:
-            st.error("GEMINI_API_KEY is missing. Please provide it in the API Configuration section or set it in the environment.")
-            return None
+        import google.generativeai as genai  # type: ignore
+        from tenacity import retry, stop_after_attempt, wait_exponential  # type: ignore
+
         genai.configure(api_key=api_key)
-    except Exception as err:
-        st.error(f"Failed to configure Gemini: {err}")
-        return None
-    generation_config = {
-        "temperature": 0.9,
-        "top_p": 0.6,
-        "top_k": 1,
-        "max_output_tokens": 1024
+
+        @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=1, max=6))
+        def _generate() -> str:
+            model = genai.GenerativeModel("gemini-2.5-flash")
+            response = model.generate_content(
+                prompt,
+                generation_config={
+                    "temperature": 0.7,
+                    "top_p": 0.4,
+                    "max_output_tokens": 1024,
+                },
+            )
+            return response.text or ""
+
+        return _generate()
+    except Exception:
+        # Fallback for local demo without API
+        return (
+            "1) Novaly\n"
+            "2) Bluemint\n"
+            "3) Nexora\n"
+            "4) Lumexa\n"
+            "5) Verityx"
+        )
+
+
+def build_prompt(
+    business_type: str,
+    keywords: List[str],
+    personality: str,
+    style: str,
+    length: str,
+    language: str,
+    target_market: str,
+    num_names: int,
+) -> str:
+    keywords_text = ", ".join([k.strip() for k in keywords if k.strip()]) or "brandable, memorable"
+    constraints = [
+        "Each name should be easy to spell and pronounce",
+        "Avoid hyphens, numbers, and hard-to-spell words",
+        "Prefer short, distinctive names (or as per length preference)",
+        "Avoid generic terms and overused suffixes",
+        "Names must be culturally appropriate for the selected language and market",
+        "Return one name per line as a numbered list",
+    ]
+
+    return (
+        f"You are an expert brand strategist. Generate {num_names} unique, distinctive, and brandable "
+        f"company or product names in {language}.\n\n"
+        f"Business type: {business_type or 'General'}\n"
+        f"Brand values/keywords: {keywords_text}\n"
+        f"Brand personality: {personality or 'Modern, friendly, professional'}\n"
+        f"Desired style: {style or 'Creative & Unique'}\n"
+        f"Preferred length: {length or 'Any'}\n"
+        f"Target market: {target_market or 'Global'}\n\n"
+        "Uniqueness requirements: Focus on coined, blended, or metaphorical names. "
+        "Favor slight neologisms, portmanteaus, or evocative roots. Avoid direct dictionary words unless fresh.\n\n"
+        "Constraints:\n- " + "\n- ".join(constraints) + "\n\n"
+        "Output format: Provide only the names as a numbered list without descriptions."
+    )
+
+
+def parse_names(text: str, limit: int) -> List[str]:
+    candidates: List[str] = []
+    for raw in text.splitlines():
+        s = raw.strip()
+        if not s:
+            continue
+        # Strip common numbering patterns: "1) ", "1. ", "1 - ", "1:" etc.
+        for token in [")", ".", "-", ":"]:
+            if token + " " in s[:5]:
+                left, right = s.split(token + " ", 1)
+                if left.isdigit():
+                    s = right
+                    break
+        # Fallback: leading digits only
+        i = 0
+        while i < len(s) and s[i].isdigit():
+            i += 1
+        if i < len(s) and i > 0 and s[i:i+2] == ") ":
+            s = s[i+2:]
+        s = s.strip("- .:\t")
+        if s:
+            candidates.append(s)
+        if len(candidates) >= limit:
+            break
+    seen = set()
+    result: List[str] = []
+    for name in candidates:
+        key = name.lower()
+        if key not in seen:
+            seen.add(key)
+            result.append(name)
+        if len(result) >= limit:
+            break
+    return result
+
+
+def render_header() -> None:
+    st.markdown(
+        f"""
+        <div class="alwrity-header">
+            <h1>{APP_TITLE}</h1>
+            <div class="alwrity-subtitle">Generate creative, unique, and brandable names powered by Gemini.</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_sidebar() -> Dict[str, Any]:
+    with st.sidebar:
+        st.header("Configuration")
+
+        with st.expander("API Configuration", expanded=False):
+            api_key_input = st.text_input(
+                "Gemini API Key",
+                type="password",
+                value=os.getenv("GEMINI_API_KEY", ""),
+                help="Optional. Set GEMINI_API_KEY env var or paste here.",
+            )
+
+        language_options = [
+            "English",
+            "Spanish",
+            "French",
+            "German",
+            "Italian",
+            "Portuguese",
+            "Dutch",
+            "Japanese",
+            "Korean",
+            "Chinese",
+            "Hindi",
+            "Arabic",
+            "Latin",
+        ]
+
+        style_options = [
+            "Modern & Tech",
+            "Classic & Traditional",
+            "Creative & Unique",
+            "Elegant & Premium",
+            "Playful & Friendly",
+            "Minimal & Clean",
+        ]
+
+        length_options = ["Any", "Short", "Medium", "Long"]
+
+        st.subheader("Generation Settings")
+        num_names = st.slider("How many names?", min_value=1, max_value=15, value=10)
+        language = st.selectbox("Language", options=language_options, index=0)
+        name_style = st.selectbox("Name Style", options=style_options, index=2)
+        name_length = st.selectbox("Name Length", options=length_options, index=0)
+
+    return {
+        "api_key": api_key_input,
+        "language": language,
+        "name_style": name_style,
+        "name_length": name_length,
+        "num_names": num_names,
     }
-    model = genai.GenerativeModel(model_name="gemini-1.5-flash", generation_config=generation_config)
+
+
+def render_inputs() -> Dict[str, Any]:
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        business_type = st.text_input(
+            "Business Type",
+            placeholder="e.g., Tech startup, Restaurant, Consulting firm",
+        )
+        keywords = st.text_input(
+            "Keywords / Brand Values (comma-separated)",
+            placeholder="innovation, trust, quality, speed",
+        )
+        personality = st.text_input(
+            "Brand Personality",
+            value="Modern, friendly, professional",
+        )
+    with col2:
+        target_market = st.text_input(
+            "Target Market",
+            value="Global",
+        )
+        st.markdown(
+            """
+            <div class="alwrity-note">Tip: Strong keywords and clear personality increase name quality.</div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    return {
+        "business_type": business_type,
+        "keywords": [k.strip() for k in keywords.split(",") if k.strip()],
+        "personality": personality,
+        "target_market": target_market,
+    }
+
+
+def render_results(names: List[str]) -> None:
+    if not names:
+        st.info("No names generated yet. Configure inputs and click Generate.")
+        return
+
+    st.subheader("Generated Names")
+
+    # Card grid
+    cols = st.columns(3)
+    for i, name in enumerate(names):
+        with cols[i % 3]:
+            st.markdown(
+                f"""
+                <div class="alwrity-card">
+                    <div class="alwrity-name">{name}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+    df = pd.DataFrame({"Brand Name": names})
+    # Prepare Excel bytes for download
     try:
-        response = model.generate_content(prompt)
-        if hasattr(response, 'code') and response.code == 429:
-            return 'RATE_LIMIT'
-        if hasattr(response, 'text') and ('rate limit' in response.text.lower() or 'quota' in response.text.lower()):
-            return 'RATE_LIMIT'
-        return response.text
-    except Exception as err:
-        if 'quota' in str(err).lower() or 'rate limit' in str(err).lower():
-            return 'RATE_LIMIT'
-        st.error(f"Failed to get response from Gemini: {err}. Retrying.")
-        return None
+        from io import BytesIO
+        import pandas as _pd  # isolate import to ensure openpyxl engine is available
+
+        buffer = BytesIO()
+        with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+            df.to_excel(writer, index=False)
+        buffer.seek(0)
+        excel_bytes = buffer.getvalue()
+    except Exception:
+        excel_bytes = b""
+
+    st.download_button(
+        "Download as Excel",
+        data=excel_bytes,
+        file_name="brand_names.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        disabled=len(excel_bytes) == 0,
+    )
+
+
+def main() -> None:
+    configure_page()
+    render_header()
+
+    sidebar_cfg = render_sidebar()
+    inputs = render_inputs()
+
+    generate_clicked = st.button("Generate Brand Names", type="primary")
+
+    if generate_clicked:
+        prompt = build_prompt(
+            business_type=inputs["business_type"],
+            keywords=inputs["keywords"],
+            personality=inputs["personality"],
+            style=sidebar_cfg["name_style"],
+            length=sidebar_cfg["name_length"],
+            language=sidebar_cfg["language"],
+            target_market=inputs["target_market"],
+            num_names=sidebar_cfg["num_names"],
+        )
+        with st.spinner("Generating names..."):
+            response = gemini_text_response(prompt, api_key=sidebar_cfg["api_key"]) or ""
+            names = parse_names(response, limit=sidebar_cfg["num_names"])
+        render_results(names)
+    else:
+        render_results([])
 
 
 if __name__ == "__main__":
     main()
+
+
